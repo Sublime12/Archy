@@ -9,7 +9,7 @@ from typing import Dict
 
 import firebase_admin
 import requests
-from discord import DMChannel, Embed, File, Guild, Intents, Option, User
+from discord import DMChannel, Embed, File, Guild, Intents, User
 from discord.abc import GuildChannel
 from discord.ext.commands import Bot, Context
 from discord.member import Member as member_type
@@ -57,8 +57,13 @@ request = Request()
 
 
 @bot.event
-async def on_guild_join(guild: Guild) -> None:
+async def on_connect():
+    bot.add_cog(Commands(bot))
+    await bot.sync_commands()
 
+
+@bot.event
+async def on_guild_join(guild: Guild) -> None:
     data = {
         "server_name": str(guild.name),
         "server_id": str(guild.id),
@@ -179,7 +184,6 @@ async def on_member_remove(member: member_type) -> None:
 
 
 def get_fob_challenge_instance(user: User) -> str:
-
     data_collection: CollectionReference = db.collection("fobChallenge")
     ref = data_collection.document(f"{user.id}")
     doc = ref.get()
@@ -196,16 +200,6 @@ def get_fob_challenge_instance(user: User) -> str:
         ref.set({"id": instance_id})
         return f"http://{FOB_CHALLENGE_IP}/c/{instance_id}/"
     return f"Sorry we can't help you, contact Hannibal119 for help (error: {response.json()['text']})"
-
-
-@bot.slash_command(description="Nsec stats")
-async def nsec_stat(ctx: Context) -> None:
-    if ctx.guild_id == 909917470507286568:
-        my_collection = db.collection("fobChallenge")
-        count_query = list(my_collection.get())
-        message = f"Number of user that asked Archy for an instance: {len(count_query)}\n"
-        message += "".join([f"- <@{doc.id}>\n" for doc in my_collection.get()])
-        await ctx.respond(message)
 
 
 @bot.event
@@ -256,7 +250,6 @@ async def on_message(message: message_type) -> None:
             await ctx.send(embed=embed)
 
     elif not message.author.bot:
-
         if ctx.author.avatar:
             data["avatar_url"] = ctx.author.avatar.url
 
@@ -297,153 +290,13 @@ async def treat_command(_ctx: Context, command_name: str, data: Dict) -> str:
 
 
 def get_function_path(command_name: str) -> str:
-    if command_name.startswith(("dev_", "team_")):
+    if command_name.startswith("dev_"):
         return f"{FUNCTION_BASE_URL}{command_name}"
     return f"{FUNCTION_BASE_URL}{ENVIRONMENT}_{command_name}"
 
 
-@bot.slash_command(description="go")
-async def go(ctx: Context) -> None:  # pylint: disable=invalid-name
-
-    server_id = str(ctx.guild.id)
-    command_name = "go"
-
-    data = {
-        "server_id": server_id,
-        "channel_id": "Slash_Command",
-    }
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="Hello! :)")
-async def hello(ctx: Context) -> None:
-
-    command_name = "hello"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-        "user_id": str(ctx.author.id),
-    }
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="Return the leaderboard")
-async def leaderboard(ctx: Context) -> None:
-
-    command_name = "leaderboard"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="answers your question")
-async def answer(ctx: Context, question: Option(str, "your question", required=True)) -> None:
-
-    command_name = "answer"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    response = f"Question: {question}\nAnswer: {await treat_command(ctx, command_name, data)}"
-
-    await interaction.edit_original_response(content=response)
-
-
-@bot.slash_command(description="Request a gif")
-async def gif(ctx: Context, query: Option(str, "query to search", required=True)) -> None:
-
-    command_name = "gif"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-        "params": str(query.split(" ")),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="Template function in Java")
-async def java(ctx: Context) -> None:
-
-    command_name = "java"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="Return a random froge")
-async def froge(ctx: Context) -> None:
-
-    command_name = "froge"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
-@bot.slash_command(description="Show your level")
-async def level(ctx: Context, mention: Option(User, "wanna check someone else's?", required=False)) -> None:
-
-    server_id = str(ctx.guild.id)
-    command_name = "level"
-
-    data = {
-        "server_id": server_id,
-        "server_name": str(ctx.guild.name),
-        "user_id": str(ctx.author.id),
-    }
-    if mention:
-        data["mentions"] = [str(mention.id)]
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    response = await treat_command(ctx, command_name, data)
-    if response.split(",")[0] == "data:image/png;base64":
-        await interaction.edit_original_response(
-            content=None,
-            file=File(BytesIO(base64.b64decode(response.split(",")[1])), "image.png"),
-        )
-    else:
-        await interaction.edit_original_response(content=response)
-
-
-@bot.slash_command(description="You give me a HTTP code, I give you something nice in return")
-async def http(ctx: Context, query: Option(int, "HTTP code", required=True)) -> None:
-
-    command_name = "http"
-
-    data = {
-        "server_id": str(ctx.guild.id),
-        "params": str(query.split(" ")),
-    }
-
-    interaction = await ctx.respond(LOADING_MESSAGE)
-    message = await treat_command(ctx, command_name, data)
-    await interaction.edit_original_response(content=message)
-
-
 if __name__ == "__main__":
+    from commands import Commands
 
     # Firebase env var instead of file
     # https://stackoverflow.com/questions/73917887/firebase-credentials-as-python-environment-variables-could-not-deserialize-key

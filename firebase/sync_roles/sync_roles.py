@@ -17,7 +17,7 @@ TOPIC_ID = "update_user_role"
 
 
 if __name__ == "__main__":
-    creds = credentials.Certificate("../../src/key.json")
+    creds = credentials.Certificate("../key.json")
     firebase_admin.initialize_app(creds)
 
     database: Client = firestore.client()

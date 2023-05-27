@@ -150,3 +150,5 @@ func getUserInfo(payload Payload) (FirestoreUser, error) {
 
 	return user, nil
 }
+
+// https://cdn.discordapp.com/embed/avatars/2.png
